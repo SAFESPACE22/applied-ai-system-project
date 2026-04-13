@@ -1,255 +1,309 @@
-# 🎵 Music Recommender Simulation
+# VibeFinder — AI Music Recommender with Reliability System
 
-## Project Summary
-
-In this project you will build and explain a small music recommender system.
-
-Your goal is to:
-
-- Represent songs and a user "taste profile" as data
-- Design a scoring rule that turns that data into recommendations
-- Evaluate what your system gets right and wrong
-- Reflect on how this mirrors real world AI recommenders
-
-Replace this paragraph with your own summary of what your version does.
+A content-based music recommender built in Python that suggests songs based on a user's genre, mood, and energy preferences — now enhanced with an integrated Reliability & Testing System as an advanced AI feature.
 
 ---
 
-## How The System Works
+## Original Project: VibeFinder 1.0 (Modules 1–3)
 
-Real-world music platforms like Spotify and YouTube use a combination of collaborative filtering (recommending songs that similar users enjoyed) and content-based filtering (matching songs to a user's taste based on audio features like genre, mood, and energy). At scale, these systems process millions of data points skips, replays, playlist adds to continuously refine predictions. My version is a simplified content-based recommender that prioritizes three core features: **genre**, **mood**, and **energy level**. It scores each song in a small catalog against a user's taste profile and returns the highest-scoring tracks, making its reasoning transparent and easy to trace.
+**VibeFinder 1.0** was built during Modules 1–3 as a content-based music recommender simulation. Its goal was to represent songs and user taste profiles as structured data, then apply a weighted scoring algorithm to rank songs from a catalog of 18 tracks. The system demonstrated how real platforms like Spotify use audio features — genre, mood, energy, acousticness — to surface relevant music, making every recommendation fully explainable with a numeric score and written reasons.
 
-**Song features used:**
-- `genre`, `mood`, `energy`, `tempo_bpm`, `valence`, `danceability`, `acousticness`
+---
 
-**UserProfile stores:**
-- `favorite_genre`, `favorite_mood`, `target_energy`, `likes_acoustic`
+## What This Project Does and Why It Matters
 
-**Scoring logic (Algorithm Recipe):**
-- +2.0 points if the song's genre matches the user's favorite genre
-- +1.0 point if the song's mood matches the user's favorite mood
-- Up to +1.0 point based on energy similarity: `1 - abs(song_energy - target_energy)`
-- +0.5 points if the user likes acoustic songs and the song has high acousticness (> 0.6)
-- Maximum possible score: 4.5 points
+This project extends VibeFinder 1.0 with a **Reliability & Testing System** — a required advanced AI feature — woven directly into the main application. Every time the recommender runs, it now:
 
-**How recommendations are chosen:**
-- Input: User preference dictionary (genre, mood, energy, likes_acoustic)
-- Process: Every song in the catalog is scored using the Algorithm Recipe above
-- Output: Songs sorted highest to lowest score — the top `k` results are returned
+- **Validates inputs** before scoring begins, catching bad data early
+- **Logs every session** to a structured JSON file for traceability
+- **Tests its own consistency** by running the same profile multiple times and verifying identical results
+- **Audits its own accuracy** by checking that the top recommendation actually matches what the user asked for
 
-**Known potential bias:**
-- Because genre is worth the most points (+2.0), songs that match the user's genre will almost always rank higher even if their mood or energy is a poor fit. This could create a "filter bubble" where the user only ever sees one genre dominating their recommendations.
+This matters because even a simple rule-based AI can produce wrong or inconsistent results. Adding guardrails, logging, and self-testing turns VibeFinder from a demo script into a system you can actually trust and debug.
 
-**Data Flow Diagram:**
+---
 
-```mermaid
-flowchart TD
-    A[data/songs.csv] --> B[load_songs: Read all songs into a list]
-    B --> C[User Preference Profile\ngenre, mood, energy, likes_acoustic]
-    C --> D{For each song in catalog...}
-    D --> E[score_song: Apply Algorithm Recipe\n+2.0 genre match\n+1.0 mood match\n+0.0-1.0 energy similarity\n+0.5 acoustic bonus]
-    E --> F[Assign numeric score to song]
-    F --> D
-    D --> G[All songs scored]
-    G --> H[Sort songs highest score to lowest]
-    H --> I[Return Top K Recommendations\nwith score and reasons]
+## Architecture Overview
+
+```
+User Input (profile name + preferences)
+        |
+        v
+  [Guardrails]  validate_user_prefs()
+  src/reliability.py  — catches bad types, missing keys, out-of-range energy
+        |
+        v
+  [Recommender Engine]  recommend_songs()
+  src/recommender.py  — scores all 18 songs, returns ranked top-k
+        |
+        v
+  [Logger]  log_session()
+  src/reliability.py  — appends JSONL entry to logs/session_log.jsonl
+        |
+        v
+  Formatted table output to terminal
+
+  -- separately, via --check flag --
+
+  [Consistency Checker]  run_consistency_check()
+  Same profile run x3, top-3 titles must match
+
+  [Accuracy Auditor]  run_accuracy_audit()
+  #1 result must match stated genre OR mood
+
+  -- validated by --
+
+  [Automated Tests]  tests/test_reliability.py
+  8 pytest tests covering all four reliability functions
 ```
 
+For a visual version, see [DIAGRAM.md](DIAGRAM.md) — renders automatically on GitHub.
+
 ---
 
-## Getting Started
+## Setup Instructions
 
-### Setup
+**1. Clone the repository**
+```bash
+git clone https://github.com/SAFESPACE22/applied-ai-system-project.git
+cd applied-ai-system-project
+```
 
-1. Create a virtual environment (optional but recommended):
+**2. (Optional) Create a virtual environment**
+```bash
+python -m venv .venv
 
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate      # Mac or Linux
-   .venv\Scripts\activate         # Windows
+# Mac / Linux
+source .venv/bin/activate
 
-2. Install dependencies
+# Windows
+.venv\Scripts\activate
+```
 
+**3. Install dependencies**
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Run the app:
-
+**4. Run the recommender** (normal mode)
 ```bash
 python -m src.main
 ```
 
-### Running Tests
-
-Run the starter tests with:
-
+**5. Run the reliability report** (check mode)
 ```bash
-pytest
+python -m src.main --check
 ```
 
-You can add more tests in `tests/test_recommender.py`.
+**6. Run all tests**
+```bash
+python -m pytest
+```
+
+> **Note for Windows users:** Use `python -m pytest` instead of just `pytest` if you get a "command not found" error.
 
 ---
 
-## Terminal Output
+## Sample Interactions
 
-**Default Profile (Pop/Happy/0.8 Energy):**
+### Example 1 — Normal run: High-Energy Pop profile
 
-![Terminal Output](screenshots/terminal_output.png)
+**Input (defined in `src/main.py`):**
+```python
+{"genre": "pop", "mood": "happy", "energy": 0.9, "likes_acoustic": False}
+```
 
-**Stress Test — 3 Diverse Profiles:**
-
-High-Energy Pop:
-![High-Energy Pop](screenshots/high_energy_pop.png)
-
-Chill Lofi:
-![Chill Lofi](screenshots/chill_lofi.png)
-
-Deep Intense Rock:
-![Deep Intense Rock](screenshots/deep_intense_rock.png)
+**Output:**
+```
+============================================================
+  Profile: High-Energy Pop
+============================================================
++---+----------------+---------------+-------+----------------------------------------------------------+
+| # | Title          | Artist        | Score | Reasons                                                  |
++===+================+===============+=======+==========================================================+
+| 1 | Sunrise City   | Neon Echo     |  3.92 | genre match (+2.0), mood match (+1.0), energy sim (+0.92)|
+| 2 | Gym Hero       | Max Pulse     |  2.97 | genre match (+2.0), energy similarity (+0.97)            |
+| 3 | Rooftop Lights | Indigo Parade |  1.86 | mood match (+1.0), energy similarity (+0.86)             |
+| 4 | Back Roads     | Dusty Miles   |  1.70 | mood match (+1.0), energy similarity (+0.70)             |
+| 5 | Storm Runner   | Voltline      |  0.99 | energy similarity (+0.99)                                |
++---+----------------+---------------+-------+----------------------------------------------------------+
+  [Logged] Session saved to logs/session_log.jsonl
+```
 
 ---
 
-## Experiments You Tried
+### Example 2 — Normal run: Chill Lofi profile
 
-Use this section to document the experiments you ran. For example:
+**Input:**
+```python
+{"genre": "lofi", "mood": "chill", "energy": 0.3, "likes_acoustic": True}
+```
 
-- What happened when you changed the weight on genre from 2.0 to 0.5
-- What happened when you added tempo or valence to the score
-- How did your system behave for different types of users
+**Output:**
+```
+============================================================
+  Profile: Chill Lofi
+============================================================
++---+--------------------+----------------+-------+---------------------------------------------------------------+
+| # | Title              | Artist         | Score | Reasons                                                       |
++===+====================+================+=======+===============================================================+
+| 1 | Library Rain       | Paper Lanterns |  4.45 | genre match (+2.0), mood match (+1.0), energy sim (+0.95),    |
+|   |                    |                |       | acoustic bonus (+0.5)                                         |
+| 2 | Midnight Coding    | LoRoom         |  4.38 | genre match (+2.0), mood match (+1.0), energy sim (+0.88),    |
+|   |                    |                |       | acoustic bonus (+0.5)                                         |
+| 3 | Focus Flow         | LoRoom         |  3.40 | genre match (+2.0), energy similarity (+0.90), acoustic (+0.5)|
++---+--------------------+----------------+-------+---------------------------------------------------------------+
+  [Logged] Session saved to logs/session_log.jsonl
+```
 
 ---
 
-## Limitations and Risks
+### Example 3 — Reliability check mode
 
-Summarize some limitations of your recommender.
+**Command:**
+```bash
+python -m src.main --check
+```
 
-Examples:
+**Output:**
+```
+============================================================
+  RELIABILITY REPORT
+============================================================
 
-- It only works on a tiny catalog
-- It does not understand lyrics or language
-- It might over favor one genre or mood
+[1] Consistency Check  (same profile x3 runs — top-3 must match)
 
-You will go deeper on this in your model card.
+  PASS  High-Energy Pop
+        All runs returned identical top results.
+  PASS  Chill Lofi
+        All runs returned identical top results.
+  PASS  Deep Intense Rock
+        All runs returned identical top results.
+
+[2] Accuracy Audit  (#1 recommendation must match genre OR mood)
+
+  PASS  High-Energy Pop -> 'Sunrise City'
+        Top song 'Sunrise City' matches genre and mood.
+  PASS  Chill Lofi -> 'Library Rain'
+        Top song 'Library Rain' matches genre and mood.
+  PASS  Deep Intense Rock -> 'Thunderclap'
+        Top song 'Thunderclap' matches genre and mood.
+
+============================================================
+  Overall: ALL CHECKS PASSED
+============================================================
+```
+
+---
+
+### Example 4 — Guardrail catching bad input
+
+If a profile with an invalid energy value were added:
+```python
+{"genre": "jazz", "mood": "relaxed", "energy": 1.8, "likes_acoustic": True}
+```
+
+**Output:**
+```
+============================================================
+  Profile: Bad Profile
+============================================================
+  [INVALID] 'energy' must be between 0.0 and 1.0, got 1.8
+  Skipping this profile.
+```
+The recommender never runs — the bad data is caught before any scoring happens.
+
+---
+
+## Design Decisions
+
+**Why a Reliability & Testing System instead of RAG or an agent?**
+The existing recommender is a deterministic, rule-based algorithm — adding a language model on top would require an API key and introduce external dependencies that make the project harder to reproduce. A reliability system was the most meaningful upgrade: it addresses a real problem (can I trust this output?) without changing what the recommender fundamentally does.
+
+**Why integrate reliability into `main.py` instead of a separate script?**
+The assignment required the feature to change how the system behaves, not just exist alongside it. By calling `validate_user_prefs()` and `log_session()` inside the main run loop, the reliability system is active on every execution — not something a user has to remember to run separately.
+
+**Why JSONL (JSON Lines) for logging?**
+Each line is a self-contained, valid JSON object. This makes the log file easy to parse with one line of Python (`json.loads(line)`), easy to `grep`, and safe to append to concurrently without corrupting the file.
+
+**Why pass `recommend_fn` as a parameter to the consistency checker?**
+Dependency injection makes the checker testable without touching a real CSV file or importing the recommender module differently depending on context. Tests can pass any function that returns the same shape of output.
+
+**Trade-offs made:**
+- The catalog is 18 songs — large enough to demonstrate real behavior, small enough to understand every result by hand
+- Genre has the highest weight (+2.0), which creates a "filter bubble" effect documented in the model card. This was left intentional to make the bias visible and discussable
+- No diversity penalty — the system can recommend multiple songs from the same artist. This is a known limitation, not an oversight
+
+---
+
+## Testing Summary
+
+**What was tested:**
+
+| Test | What it checks |
+|---|---|
+| `test_validate_valid_prefs_passes` | A correct prefs dict passes all guardrails |
+| `test_validate_missing_key_fails` | Missing `mood` key is caught with a clear error |
+| `test_validate_energy_out_of_range_fails` | `energy=1.5` is rejected |
+| `test_validate_energy_wrong_type_fails` | `energy="high"` (string) is rejected |
+| `test_validate_likes_acoustic_wrong_type_fails` | `likes_acoustic="yes"` (string) is rejected |
+| `test_log_session_creates_valid_jsonl` | Log file is created and contains parseable JSON |
+| `test_consistency_check_passes_for_deterministic_scorer` | Same profile x3 always returns identical top-3 |
+| `test_accuracy_audit_pop_profile` | Top result for pop/happy profile is pop or happy |
+
+**Results: 10/10 tests pass** (2 original + 8 new)
+
+**What worked well:**
+The consistency test confirmed that the scoring algorithm is fully deterministic — no randomness, no floating-point surprises across runs. The accuracy audit passed for all three profiles, meaning the genre weight (+2.0) is doing its job: the best genre match always surfaces first.
+
+**What was surprising:**
+During the accuracy audit experiment, a pop song (Gym Hero) ranked #3 for the "Deep Intense Rock" profile — purely because of its high energy and intense mood. This confirmed the known bias: energy and mood can overcome genre for songs that sit close enough on those dimensions. It's a useful signal that the scoring weights may need tuning for edge cases.
+
+**What was learned:**
+Writing tests before you know what will fail is harder than it sounds. The guardrail tests required thinking through all the ways a user could pass bad data — wrong type, wrong range, missing entirely — before any of those bugs had actually appeared. That kind of proactive thinking is exactly what makes production code more reliable.
 
 ---
 
 ## Reflection
 
-Read and complete `model_card.md`:
+Building VibeFinder taught me that AI systems are not magic — they are decisions encoded in numbers. Every weight in the scoring formula is a design choice that carries real consequences: weighting genre at +2.0 creates a filter bubble, and weighting energy higher loosens it. The same tradeoff plays out in every real recommendation system, just at a much larger scale with learned weights instead of handcrafted ones.
 
-[**Model Card**](model_card.md)
+Adding the reliability layer changed how I think about what "done" means for an AI project. A system that produces output is not the same as a system you can trust. Logging, guardrails, and automated testing are not extras — they are what separate a demo from something you would actually rely on.
 
-My biggest learning moment during this project was understanding how to assign weighted scores to specific song attributes and use those scores to drive real recommendations. It made the concept of a recommender system feel concrete rather than abstract. Using AI tools helped guide me through the process step by step, though I found it important to double-check the AI along the way to make sure no steps were skipped. What surprised me most was how much a recommendation system can accomplish using just simple numerical values — the idea that a song's entire "vibe" can be captured and compared using a handful of decimals between 0.0 and 1.0 was unexpectedly powerful.
-
-Building this also made me realize how easily bias can creep into a system through weight choices alone. Because genre was worth the most points, it dominated every result — which mirrors how real platforms can create filter bubbles by over-prioritizing certain signals. If I were to extend this project, I would evolve it into a machine learning model that learns from user feedback over time rather than relying on manually assigned weights.
-
+The biggest takeaway: the most important questions in AI are not "does it work?" but "how do I know it works, and what happens when it doesn't?"
 
 ---
 
-## 7. `model_card_template.md`
+## Project Structure
 
-Combines reflection and model card framing from the Module 3 guidance. :contentReference[oaicite:2]{index=2}  
-
-```markdown
-# 🎧 Model Card - Music Recommender Simulation
-
-## 1. Model Name
-
-Give your recommender a name, for example:
-
-> VibeFinder 1.0
-
----
-
-## 2. Intended Use
-
-- What is this system trying to do
-- Who is it for
-
-Example:
-
-> This model suggests 3 to 5 songs from a small catalog based on a user's preferred genre, mood, and energy level. It is for classroom exploration only, not for real users.
+```
+vibefinder/
+├── src/
+│   ├── main.py           # CLI entry point (normal + --check mode)
+│   ├── recommender.py    # Scoring engine: load_songs, score_song, recommend_songs
+│   └── reliability.py    # Reliability system: guardrails, logging, checker, auditor
+├── tests/
+│   ├── test_recommender.py   # Original scoring tests
+│   └── test_reliability.py   # 8 reliability tests
+├── data/
+│   └── songs.csv         # 18-song catalog
+├── logs/
+│   └── session_log.jsonl # Auto-generated after each run (gitignored)
+├── PLAN.md               # Project plan and feature breakdown
+├── DIAGRAM.md            # System diagram (Mermaid, renders on GitHub)
+├── model_card.md         # AI model documentation and bias analysis
+└── requirements.txt      # pandas, pytest, tabulate, streamlit
+```
 
 ---
 
-## 3. How It Works (Short Explanation)
+## Dependencies
 
-Describe your scoring logic in plain language.
+```
+pandas
+pytest
+tabulate
+streamlit
+```
 
-- What features of each song does it consider
-- What information about the user does it use
-- How does it turn those into a number
-
-Try to avoid code in this section, treat it like an explanation to a non programmer.
-
----
-
-## 4. Data
-
-Describe your dataset.
-
-- How many songs are in `data/songs.csv`
-- Did you add or remove any songs
-- What kinds of genres or moods are represented
-- Whose taste does this data mostly reflect
-
----
-
-## 5. Strengths
-
-Where does your recommender work well
-
-You can think about:
-- Situations where the top results "felt right"
-- Particular user profiles it served well
-- Simplicity or transparency benefits
-
----
-
-## 6. Limitations and Bias
-
-Where does your recommender struggle
-
-Some prompts:
-- Does it ignore some genres or moods
-- Does it treat all users as if they have the same taste shape
-- Is it biased toward high energy or one genre by default
-- How could this be unfair if used in a real product
-
----
-
-## 7. Evaluation
-
-How did you check your system
-
-Examples:
-- You tried multiple user profiles and wrote down whether the results matched your expectations
-- You compared your simulation to what a real app like Spotify or YouTube tends to recommend
-- You wrote tests for your scoring logic
-
-You do not need a numeric metric, but if you used one, explain what it measures.
-
----
-
-## 8. Future Work
-
-If you had more time, how would you improve this recommender
-
-Examples:
-
-- Add support for multiple users and "group vibe" recommendations
-- Balance diversity of songs instead of always picking the closest match
-- Use more features, like tempo ranges or lyric themes
-
----
-
-## 9. Personal Reflection
-
-A few sentences about what you learned:
-
-- What surprised you about how your system behaved
-- How did building this change how you think about real music recommenders
-- Where do you think human judgment still matters, even if the model seems "smart"
-
+Install with: `pip install -r requirements.txt`
